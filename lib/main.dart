@@ -16,7 +16,7 @@ class MyApp extends StatelessWidget {
       child: MaterialApp(
         title: 'Namer App',
         theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepOrange),
+          colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigoAccent),
         ),
         home: MyHomePage(),
       ),
@@ -26,13 +26,14 @@ class MyApp extends StatelessWidget {
 
 class MyAppState extends ChangeNotifier {
   var current = WordPair.random();
+  var all = <WordPair>[];
+  var favorites = <WordPair>[];
 
   void getNext() {
     current = WordPair.random();
+    all.add(current);
     notifyListeners();
   }
-
-  var favorites = <WordPair>[];
 
   void toggleFavorite() {
     if (favorites.contains(current)) {
@@ -125,6 +126,58 @@ class GeneratorPage extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           // Text('A random AWESOME idea:'),
+          // Add a list view of all generated word pairs
+          Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SizedBox(
+                  height:
+                      200, // adjust height as needed (controls visible area above BigCard)
+                  width: double.infinity,
+                  child: ListView.builder(
+                    padding: const EdgeInsets.symmetric(vertical: 8.0),
+                    itemCount: appState.all.length,
+                    itemBuilder: (context, index) {
+                      var generatedPair = appState.all[index];
+                      var isFavorite = appState.favorites.contains(
+                        generatedPair,
+                      );
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 6.0),
+                        child: Center(
+                          child: Row(
+                            mainAxisSize: MainAxisSize
+                                .min, // make row as wide as its contents
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              if (isFavorite) ...[
+                                Icon(
+                                  Icons.favorite,
+                                  color: theme.colorScheme.primary,
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 8),
+                              ],
+                              Text(
+                                generatedPair.asLowerCase,
+                                style: TextStyle(
+                                  fontSize: 24,
+                                  fontFamily: 'Roboto',
+                                  fontWeight: FontWeight.w400,
+                                  color: theme.textTheme.bodyLarge?.color,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
           BigCard(pair: pair),
           SizedBox(height: 20),
           Row(
@@ -181,20 +234,48 @@ class FavoritesPage extends StatelessWidget {
       return Center(child: Text('No favorites yet.'));
     }
 
-    return ListView.builder(
-      itemCount: favorites.length,
-      itemBuilder: (context, index) {
-        var pair = favorites[index];
-        return ListTile(
-          title: Text(pair.asLowerCase),
-          trailing: IconButton(
-            icon: Icon(Icons.delete),
-            onPressed: () {
-              appState.removeFavorite(pair);
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Text(
+            'You have ${appState.favorites.length} favorites:',
+            style: Theme.of(context).textTheme.headlineMedium,
+          ),
+        ),
+        Expanded(
+          child: ListView.builder(
+            itemCount: favorites.length,
+            itemBuilder: (context, index) {
+              var pair = favorites[index];
+              return ListTile(
+                leading: Icon(Icons.favorite),
+                title: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 8.0,
+                    horizontal: 20.0,
+                  ),
+                  child: Text(
+                    pair.asLowerCase,
+                    style: TextStyle(
+                      fontSize: 30,
+                      fontFamily: 'Roboto',
+                      fontWeight: FontWeight.w400,
+                      color: Theme.of(context).textTheme.bodyLarge?.color,
+                    ),
+                  ),
+                ),
+                trailing: IconButton(
+                  icon: Icon(Icons.delete),
+                  onPressed: () {
+                    appState.removeFavorite(pair);
+                  },
+                ),
+              );
             },
           ),
-        );
-      },
+        ),
+      ],
     );
   }
 }
@@ -218,11 +299,26 @@ class BigCard extends StatelessWidget {
       elevation: 25,
       child: Padding(
         padding: const EdgeInsets.all(40.0),
-        child: Text(
-          pair.asLowerCase,
-          style: style,
+        child: Text.rich(
+          TextSpan(
+            children: [
+              TextSpan(
+                text: '${pair.first}',
+                style: style.copyWith(fontWeight: FontWeight.w100),
+              ),
+              TextSpan(
+                text: pair.second,
+                style: style.copyWith(fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
           semanticsLabel: "${pair.first} ${pair.second}",
         ),
+        // child: Text(
+        //   pair.asLowerCase,
+        //   style: style,
+        //   semanticsLabel: "${pair.first} ${pair.second}",
+        // ),
       ),
     );
   }
