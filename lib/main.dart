@@ -303,39 +303,38 @@ class FavoritesPage extends StatelessWidget {
               ),
               itemBuilder: (context, index) {
                 final pair = favorites[index];
-                return Card(
-                  elevation: 6,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+                return Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8.0,
+                    vertical: 12.0,
                   ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(12.0),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.favorite,
-                          color: theme.colorScheme.primary,
-                          size: 20,
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
+                  alignment: Alignment.center,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Flexible(
+                        child: Text(
                           pair.asLowerCase,
-                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            fontSize: 18,
+                            fontSize: 30,
                             fontFamily: 'Roboto',
                             color: theme.textTheme.bodyLarge?.color,
                           ),
                         ),
-                        const SizedBox(height: 8),
-                        IconButton(
-                          icon: const Icon(Icons.delete),
-                          onPressed: () => appState.removeFavorite(pair),
-                          tooltip: 'Remove',
-                        ),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(width: 6),
+                      IconButton(
+                        padding: EdgeInsets.zero, // remove default padding
+                        constraints: BoxConstraints(minWidth: 0, minHeight: 0),
+                        icon: const Icon(Icons.delete),
+                        onPressed: () => appState.removeFavorite(pair),
+                        tooltip: 'Remove',
+                        splashRadius: 18,
+                      ),
+                    ],
                   ),
                 );
               },
