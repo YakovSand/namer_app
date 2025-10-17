@@ -274,50 +274,72 @@ class FavoritesPage extends StatelessWidget {
   Widget build(BuildContext context) {
     var appState = context.watch<MyAppState>();
     var favorites = appState.favorites;
+    var theme = Theme.of(context);
 
     if (favorites.isEmpty) {
       return Center(child: Text('No favorites yet.'));
     }
 
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
           padding: const EdgeInsets.all(16.0),
           child: Text(
             'You have ${appState.favorites.length} favorites:',
-            style: Theme.of(context).textTheme.headlineMedium,
+            style: theme.textTheme.headlineMedium,
           ),
         ),
         Expanded(
-          child: ListView.builder(
-            itemCount: favorites.length,
-            itemBuilder: (context, index) {
-              var pair = favorites[index];
-              return ListTile(
-                leading: Icon(Icons.favorite),
-                title: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    vertical: 8.0,
-                    horizontal: 20.0,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: GridView.builder(
+              itemCount: favorites.length,
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2, // two columns
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 12,
+                childAspectRatio: 3 / 2, // adjust to taste
+              ),
+              itemBuilder: (context, index) {
+                final pair = favorites[index];
+                return Card(
+                  elevation: 6,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Text(
-                    pair.asLowerCase,
-                    style: TextStyle(
-                      fontSize: 30,
-                      fontFamily: 'Roboto',
-                      fontWeight: FontWeight.w400,
-                      color: Theme.of(context).textTheme.bodyLarge?.color,
+                  child: Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.favorite,
+                          color: theme.colorScheme.primary,
+                          size: 20,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          pair.asLowerCase,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontFamily: 'Roboto',
+                            color: theme.textTheme.bodyLarge?.color,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        IconButton(
+                          icon: const Icon(Icons.delete),
+                          onPressed: () => appState.removeFavorite(pair),
+                          tooltip: 'Remove',
+                        ),
+                      ],
                     ),
                   ),
-                ),
-                trailing: IconButton(
-                  icon: Icon(Icons.delete),
-                  onPressed: () {
-                    appState.removeFavorite(pair);
-                  },
-                ),
-              );
-            },
+                );
+              },
+            ),
           ),
         ),
       ],
