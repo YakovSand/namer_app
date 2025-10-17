@@ -110,7 +110,56 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 }
 
-class GeneratorPage extends StatelessWidget {
+class GeneratorPage extends StatefulWidget {
+  @override
+  State<GeneratorPage> createState() => _GeneratorPageState();
+}
+
+class _GeneratorPageState extends State<GeneratorPage> {
+  final ScrollController _scrollController = ScrollController();
+  int _lastCount = 0;
+  MyAppState? _appState;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _appState = context.read<MyAppState>();
+      _lastCount = _appState?.all.length ?? 0;
+      _appState?.addListener(_onAppStateChanged);
+      _scrollToBottom();
+    });
+  }
+
+  void _onAppStateChanged() {
+    final cur = _appState?.all.length ?? 0;
+    if (cur > _lastCount) {
+      _lastCount = cur;
+      _scrollToBottom();
+    } else {
+      _lastCount = cur;
+    }
+  }
+
+  void _scrollToBottom() {
+    if (!_scrollController.hasClients) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_scrollController.hasClients) return;
+      _scrollController.animateTo(
+        _scrollController.position.maxScrollExtent,
+        duration: Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    });
+  }
+
+  @override
+  void dispose() {
+    _appState?.removeListener(_onAppStateChanged);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     var appState = context.watch<MyAppState>();
@@ -125,55 +174,51 @@ class GeneratorPage extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // Text('A random AWESOME idea:'),
           // Add a list view of all generated word pairs
-          Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+          SizedBox(
+            height: 200,
+            width: double.infinity,
+            child: Stack(
               children: [
-                SizedBox(
-                  height:
-                      200, // adjust height as needed (controls visible area above BigCard)
-                  width: double.infinity,
-                  child: ListView.builder(
-                    padding: const EdgeInsets.symmetric(vertical: 8.0),
-                    itemCount: appState.all.length,
-                    itemBuilder: (context, index) {
-                      var generatedPair = appState.all[index];
-                      var isFavorite = appState.favorites.contains(
-                        generatedPair,
-                      );
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 6.0),
-                        child: Center(
-                          child: Row(
-                            mainAxisSize: MainAxisSize
-                                .min, // make row as wide as its contents
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              if (isFavorite) ...[
-                                Icon(
-                                  Icons.favorite,
-                                  color: theme.colorScheme.primary,
-                                  size: 20,
-                                ),
-                                const SizedBox(width: 8),
-                              ],
-                              Text(
-                                generatedPair.asLowerCase,
-                                style: TextStyle(
-                                  fontSize: 24,
-                                  fontFamily: 'Roboto',
-                                  fontWeight: FontWeight.w400,
-                                  color: theme.textTheme.bodyLarge?.color,
-                                ),
+                ListView.builder(
+                  controller: _scrollController,
+                  padding: const EdgeInsets.symmetric(vertical: 8.0),
+                  itemCount: appState.all.length,
+                  itemBuilder: (context, index) {
+                    var generatedPair = appState.all[index];
+                    var isFavorite = appState.favorites.contains(generatedPair);
+                    final isLatest = index == (appState.all.length - 1);
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 6.0),
+                      child: Center(
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            if (isFavorite) ...[
+                              Icon(
+                                Icons.favorite,
+                                color: theme.colorScheme.primary,
+                                size: 20,
                               ),
+                              const SizedBox(width: 8),
                             ],
-                          ),
+                            Text(
+                              generatedPair.asLowerCase,
+                              style: TextStyle(
+                                fontSize: 24,
+                                fontFamily: 'Roboto',
+                                fontWeight: isLatest
+                                    ? FontWeight.w500
+                                    : FontWeight.w400,
+                                color: theme.textTheme.bodyLarge?.color,
+                              ),
+                            ),
+                          ],
                         ),
-                      );
-                    },
-                  ),
+                      ),
+                    );
+                  },
                 ),
               ],
             ),
