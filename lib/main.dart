@@ -47,6 +47,43 @@ class MyAppState extends ChangeNotifier {
 class MyHomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    return Scaffold(
+      body: Row(
+        children: [
+          SafeArea(
+            child: NavigationRail(
+              extended: true,
+              destinations: [
+                NavigationRailDestination(
+                  icon: Icon(Icons.home),
+                  label: Text('Home'),
+                ),
+                NavigationRailDestination(
+                  icon: Icon(Icons.favorite),
+                  label: Text('Favorites'),
+                ),
+              ],
+              selectedIndex: 0,
+              onDestinationSelected: (value) {
+                print('selected: $value');
+              },
+            ),
+          ),
+          Expanded(
+            child: Container(
+              color: Theme.of(context).colorScheme.primaryContainer,
+              child: GeneratorPage(),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class GeneratorPage extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
     var appState = context.watch<MyAppState>();
     var pair = appState.current;
     final ButtonStyle mainButtonStyle = ElevatedButton.styleFrom(
@@ -55,54 +92,52 @@ class MyHomePage extends StatelessWidget {
     );
     var theme = Theme.of(context);
 
-    return Scaffold(
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // Text('A random AWESOME idea:'),
-            BigCard(pair: pair),
-            SizedBox(height: 20),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                SizedBox(
-                  width: 160, // Set desired width
-                  height: 70, // Set desired height
-                  child: ElevatedButton(
-                    onPressed: () {
-                      print('button pressed!');
-                      appState.getNext();
-                    },
-                    style: mainButtonStyle,
-                    child: Text('Next'),
-                  ),
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // Text('A random AWESOME idea:'),
+          BigCard(pair: pair),
+          SizedBox(height: 20),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: 160, // Set desired width
+                height: 70, // Set desired height
+                child: ElevatedButton(
+                  onPressed: () {
+                    print('button pressed!');
+                    appState.getNext();
+                  },
+                  style: mainButtonStyle,
+                  child: Text('Next'),
                 ),
-                SizedBox(width: 20), // Space between buttons
-                SizedBox(
-                  width: 200, // Set desired width
-                  height: 70, // Set desired height
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      print('Favorite button pressed!');
-                      appState.toggleFavorite();
-                      print(appState.favorites);
-                    },
-                    style: mainButtonStyle,
-                    icon: Icon(
-                      appState.favorites.contains(pair)
-                          ? Icons.favorite
-                          : Icons.favorite_border,
-                      color: theme.colorScheme.primary,
-                      size: 40, // Set the desired icon size here
-                    ),
-                    label: Text('Like', style: TextStyle(fontSize: 40)),
+              ),
+              SizedBox(width: 20), // Space between buttons
+              SizedBox(
+                width: 200, // Set desired width
+                height: 70, // Set desired height
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    print('Favorite button pressed!');
+                    appState.toggleFavorite();
+                    print(appState.favorites);
+                  },
+                  style: mainButtonStyle,
+                  icon: Icon(
+                    appState.favorites.contains(pair)
+                        ? Icons.favorite
+                        : Icons.favorite_border,
+                    color: theme.colorScheme.primary,
+                    size: 40, // Set the desired icon size here
                   ),
+                  label: Text('Like', style: TextStyle(fontSize: 40)),
                 ),
-              ],
-            ),
-          ],
-        ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
