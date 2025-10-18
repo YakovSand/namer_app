@@ -28,6 +28,9 @@ class MyAppState extends ChangeNotifier {
   var current = WordPair.random();
   var all = <WordPair>[];
   var favorites = <WordPair>[];
+  MyAppState() {
+    all.add(current);
+  }
 
   void getNext() {
     current = WordPair.random();
@@ -56,28 +59,27 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  @override
   var selectedIndex = 0;
 
+  @override
   Widget build(BuildContext context) {
     Widget page;
     switch (selectedIndex) {
       case 0:
         page = GeneratorPage();
-        break;
       case 1:
         page = FavoritesPage();
-        break;
       default:
         throw UnimplementedError('no widget for $selectedIndex');
     }
 
+    // Scaffold with NavigationRail to switch between pages and Expanded page area
     return Scaffold(
       body: Row(
         children: [
           SafeArea(
             child: NavigationRail(
-              extended: true,
+              extended: false,
               destinations: [
                 NavigationRailDestination(
                   icon: Icon(Icons.home),
@@ -110,6 +112,7 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 }
 
+// GeneratorPage with scrollable list of generated word pairs
 class GeneratorPage extends StatefulWidget {
   @override
   State<GeneratorPage> createState() => _GeneratorPageState();
@@ -153,6 +156,20 @@ class _GeneratorPageState extends State<GeneratorPage> {
     });
   }
 
+  Size getResponsiveButtonSize(BuildContext context) {
+    final screenSize = MediaQuery.of(context).size;
+    final isLandscape = screenSize.width > screenSize.height;
+
+    // Tune ratios as needed
+    final widthRatio = isLandscape ? 0.35 : 0.45;
+    final heightRatio = isLandscape ? 0.10 : 0.07;
+
+    final buttonWidth = screenSize.width * widthRatio;
+    final buttonHeight = screenSize.height * heightRatio;
+
+    return Size(buttonWidth, buttonHeight);
+  }
+
   @override
   void dispose() {
     _appState?.removeListener(_onAppStateChanged);
@@ -164,107 +181,224 @@ class _GeneratorPageState extends State<GeneratorPage> {
   Widget build(BuildContext context) {
     var appState = context.watch<MyAppState>();
     var pair = appState.current;
-    final ButtonStyle mainButtonStyle = ElevatedButton.styleFrom(
-      padding: EdgeInsets.symmetric(horizontal: 32, vertical: 20),
-      textStyle: TextStyle(fontSize: 40),
-    );
     var theme = Theme.of(context);
+    // Screen size aware sizes
+    final screenSize = MediaQuery.of(context).size;
+    final screenWidth = screenSize.width;
+    final screenHeight = screenSize.height;
+    // compute responsive values and clamp them to reasonable limits
+    final double fontSize = (screenWidth * 0.045).clamp(14.0, 40.0);
+    final double horizontalPadding = (screenWidth * 0.04).clamp(8.0, 48.0);
+    final double verticalPadding = (screenHeight * 0.018).clamp(6.0, 20.0);
+    final double itemVerticalPadding = (screenHeight * 0.006).clamp(4.0, 12.0);
+    final double iconSizeInList = (screenWidth * 0.03).clamp(16.0, 28.0);
+    final double itemFontSizeInList = (screenWidth * 0.045).clamp(14.0, 32.0);
+    final double iconTextSpacingInList = (screenWidth * 0.01).clamp(6.0, 12.0);
+    // compute responsive button size
+    Size buttonSize = getResponsiveButtonSize(context);
 
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          // Add a list view of all generated word pairs
-          SizedBox(
-            height: 200,
-            width: double.infinity,
-            child: Stack(
-              children: [
-                ListView.builder(
-                  controller: _scrollController,
-                  padding: const EdgeInsets.symmetric(vertical: 8.0),
-                  itemCount: appState.all.length,
-                  itemBuilder: (context, index) {
-                    var generatedPair = appState.all[index];
-                    var isFavorite = appState.favorites.contains(generatedPair);
-                    final isLatest = index == (appState.all.length - 1);
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 6.0),
-                      child: Center(
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            if (isFavorite) ...[
-                              Icon(
-                                Icons.favorite,
-                                color: theme.colorScheme.primary,
-                                size: 20,
-                              ),
-                              const SizedBox(width: 8),
-                            ],
-                            Text(
-                              generatedPair.asLowerCase,
-                              style: TextStyle(
-                                fontSize: 24,
-                                fontFamily: 'Roboto',
-                                fontWeight: isLatest
-                                    ? FontWeight.w500
-                                    : FontWeight.w400,
-                                color: theme.textTheme.bodyLarge?.color,
+    final ButtonStyle mainButtonStyle = ElevatedButton.styleFrom(
+      padding: EdgeInsets.symmetric(
+        horizontal: horizontalPadding,
+        vertical: verticalPadding,
+      ),
+      textStyle: TextStyle(fontSize: fontSize),
+    );
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final availableHeight = constraints.maxHeight;
+        // final availableWidth = constraints.maxWidth;
+
+        // compute sizes relative to available space (will adapt to orientation)
+        final double listHeight = (availableHeight * 0.32).clamp(60.0, 300.0);
+        final double gap = (availableHeight * 0.02).clamp(8.0, 24.0);
+        final double likeIconSizeInButton = (screenWidth * 0.06).clamp(
+          18.0,
+          48.0,
+        );
+        final double likeLabelFontSizeInButton = (screenWidth * 0.05).clamp(
+          14.0,
+          40.0,
+        );
+
+        return SingleChildScrollView(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewPadding.bottom + 24.0,
+          ),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: availableHeight),
+            child: SafeArea(
+              top: false,
+              left: false,
+              right: false,
+              bottom: true,
+              child: IntrinsicHeight(
+                child: Column(
+                  children: [
+                    SizedBox(height: gap * 5),
+                    // scrollable centered list
+                    SizedBox(
+                      height: listHeight,
+                      width: double.infinity,
+                      child: Stack(
+                        children: [
+                          ListView.builder(
+                            controller: _scrollController,
+                            padding: EdgeInsets.symmetric(
+                              vertical: itemVerticalPadding,
+                            ),
+                            itemCount: appState.all.length,
+                            itemBuilder: (context, index) {
+                              var generatedPair = appState.all[index];
+                              var isFavorite = appState.favorites.contains(
+                                generatedPair,
+                              );
+                              final isLatest =
+                                  index == (appState.all.length - 1);
+                              return Padding(
+                                padding: EdgeInsets.symmetric(
+                                  vertical: itemVerticalPadding,
+                                ),
+                                child: Center(
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.center,
+                                    children: [
+                                      if (isFavorite) ...[
+                                        Icon(
+                                          Icons.favorite,
+                                          color: theme.colorScheme.primary,
+                                          size: iconSizeInList,
+                                        ),
+                                        SizedBox(width: iconTextSpacingInList),
+                                      ],
+                                      Text(
+                                        generatedPair.asLowerCase,
+                                        style: TextStyle(
+                                          fontSize: itemFontSizeInList,
+                                          fontFamily: 'Roboto',
+                                          fontWeight: isLatest
+                                              ? FontWeight.w600
+                                              : FontWeight.w400,
+                                          color:
+                                              theme.textTheme.bodyLarge?.color,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                          // top fade overlay
+                          Positioned(
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            child: IgnorePointer(
+                              child: Container(
+                                height: (listHeight * 0.3).clamp(20.0, 60.0),
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    begin: Alignment.topCenter,
+                                    end: Alignment.bottomCenter,
+                                    colors: [
+                                      Theme.of(
+                                        context,
+                                      ).colorScheme.primaryContainer
+                                      // ignore: deprecated_member_use
+                                      .withOpacity(1.0),
+                                      Theme.of(
+                                        context,
+                                      ).colorScheme.primaryContainer
+                                      // ignore: deprecated_member_use
+                                      .withOpacity(0.0),
+                                    ],
+                                  ),
+                                ),
                               ),
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
-                    );
-                  },
+                    ),
+
+                    SizedBox(height: gap),
+
+                    // BigCard expands but won't overflow due to the outer SingleChildScrollView
+                    Flexible(
+                      fit: FlexFit.loose,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12.0),
+                        child: BigCard(pair: pair),
+                      ),
+                    ),
+
+                    SizedBox(height: gap),
+
+                    // Buttons: use Wrap so they wrap on narrow heights (landscape)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12.0),
+                      child: Wrap(
+                        alignment: WrapAlignment.center,
+                        spacing: gap,
+                        runSpacing: gap / 2,
+                        children: [
+                          ConstrainedBox(
+                            constraints: BoxConstraints(
+                              minWidth: buttonSize.width * 0.8,
+                              maxWidth: buttonSize.width,
+                              minHeight: buttonSize.height * 0.8,
+                              maxHeight: buttonSize.height,
+                            ),
+                            child: ElevatedButton(
+                              onPressed: () {
+                                appState.getNext();
+                              },
+                              style: mainButtonStyle,
+                              child: Text('Next'),
+                            ),
+                          ),
+                          ConstrainedBox(
+                            constraints: BoxConstraints(
+                              minWidth: buttonSize.width * 0.8,
+                              maxWidth: buttonSize.width,
+                              minHeight: buttonSize.height * 0.8,
+                              maxHeight: buttonSize.height,
+                            ),
+                            child: ElevatedButton.icon(
+                              onPressed: () {
+                                appState.toggleFavorite();
+                              },
+                              style: mainButtonStyle,
+                              icon: Icon(
+                                appState.favorites.contains(pair)
+                                    ? Icons.favorite
+                                    : Icons.favorite_border,
+                                color: theme.colorScheme.primary,
+                                size: likeIconSizeInButton,
+                              ),
+                              label: Text(
+                                'Like',
+                                style: TextStyle(
+                                  fontSize: likeLabelFontSizeInButton,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    SizedBox(height: gap),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
-          BigCard(pair: pair),
-          SizedBox(height: 20),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              SizedBox(
-                width: 160, // Set desired width
-                height: 70, // Set desired height
-                child: ElevatedButton(
-                  onPressed: () {
-                    print('button pressed!');
-                    appState.getNext();
-                  },
-                  style: mainButtonStyle,
-                  child: Text('Next'),
-                ),
-              ),
-              SizedBox(width: 20), // Space between buttons
-              SizedBox(
-                width: 200, // Set desired width
-                height: 70, // Set desired height
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    print('Favorite button pressed!');
-                    appState.toggleFavorite();
-                    print(appState.favorites);
-                  },
-                  style: mainButtonStyle,
-                  icon: Icon(
-                    appState.favorites.contains(pair)
-                        ? Icons.favorite
-                        : Icons.favorite_border,
-                    color: theme.colorScheme.primary,
-                    size: 40, // Set the desired icon size here
-                  ),
-                  label: Text('Like', style: TextStyle(fontSize: 40)),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
@@ -272,69 +406,95 @@ class _GeneratorPageState extends State<GeneratorPage> {
 class FavoritesPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    var appState = context.watch<MyAppState>();
-    var favorites = appState.favorites;
-    var theme = Theme.of(context);
+    final appState = context.watch<MyAppState>();
+    final favorites = appState.favorites;
+    final theme = Theme.of(context);
 
     if (favorites.isEmpty) {
       return Center(child: Text('No favorites yet.'));
     }
 
+    // Screen / orientation aware sizes
+    final media = MediaQuery.of(context);
+    final screenW = media.size.width;
+    final screenH = media.size.height;
+    final isPortrait = media.orientation == Orientation.portrait;
+
+    // Grid columns: 2 in portrait, 3 in landscape (adjust as needed)
+    final int crossAxisCount = isPortrait ? 2 : 3;
+
+    // Spacing & tile sizing derived from screen dimensions
+    final double spacing = (screenW * 0.03).clamp(8.0, 24.0);
+    final double tileHeight = (screenH * 0.11).clamp(56.0, 160.0);
+    final double tileWidth =
+        (screenW - (spacing * (crossAxisCount + 1))) / crossAxisCount;
+    final double childAspectRatio = tileWidth / tileHeight;
+
+    // Font / icon sizes derived from tile size
+    final double titleFontSize = (tileHeight * 0.36).clamp(12.0, 28.0);
+    final double iconSize = (tileHeight * 0.34).clamp(14.0, 36.0);
+
+    final double headerFontSize = (screenW * 0.05).clamp(14.0, 28.0);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: EdgeInsets.all(spacing),
           child: Text(
-            'You have ${appState.favorites.length} favorites:',
-            style: theme.textTheme.headlineMedium,
+            'You have ${favorites.length} favorites:',
+            style: theme.textTheme.headlineSmall?.copyWith(
+              fontSize: headerFontSize,
+            ),
           ),
         ),
         Expanded(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            padding: EdgeInsets.symmetric(horizontal: spacing),
             child: GridView.builder(
               itemCount: favorites.length,
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2, // two columns
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-                childAspectRatio: 3 / 2, // adjust to taste
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: crossAxisCount,
+                crossAxisSpacing: spacing,
+                mainAxisSpacing: spacing,
+                childAspectRatio: childAspectRatio,
               ),
               itemBuilder: (context, index) {
                 final pair = favorites[index];
                 return Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8.0,
-                    vertical: 12.0,
-                  ),
                   alignment: Alignment.center,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Flexible(
-                        child: Text(
-                          pair.asLowerCase,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 30,
-                            fontFamily: 'Roboto',
-                            color: theme.textTheme.bodyLarge?.color,
+                  padding: EdgeInsets.symmetric(horizontal: spacing * 0.5),
+                  child: Center(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Flexible(
+                          child: Text(
+                            pair.asLowerCase,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: titleFontSize,
+                              fontFamily: 'Roboto',
+                              color: theme.textTheme.bodyLarge?.color,
+                            ),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 6),
-                      IconButton(
-                        padding: EdgeInsets.zero, // remove default padding
-                        constraints: BoxConstraints(minWidth: 0, minHeight: 0),
-                        icon: const Icon(Icons.delete),
-                        onPressed: () => appState.removeFavorite(pair),
-                        tooltip: 'Remove',
-                        splashRadius: 18,
-                      ),
-                    ],
+                        SizedBox(width: spacing * 0.25),
+                        IconButton(
+                          padding: EdgeInsets.zero,
+                          constraints: BoxConstraints(
+                            minWidth: 0,
+                            minHeight: 0,
+                          ),
+                          icon: Icon(Icons.delete, size: iconSize),
+                          onPressed: () => appState.removeFavorite(pair),
+                          tooltip: 'Remove',
+                          splashRadius: (iconSize * 0.9).clamp(18.0, 28.0),
+                        ),
+                      ],
+                    ),
                   ),
                 );
               },
@@ -353,23 +513,31 @@ class BigCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Screen / orientation aware sizes
+    final media = MediaQuery.of(context);
+    final screenW = media.size.width;
+    final screenH = media.size.height;
+    final isPortrait = media.orientation == Orientation.portrait;
+    final cardElevation = 25.0;
     var theme = Theme.of(context);
     var style = theme.textTheme.displayMedium!.copyWith(
       color: theme.colorScheme.onPrimary,
       fontWeight: FontWeight.bold,
-      fontSize: 100,
+      fontSize: isPortrait
+          ? (screenW * 0.1).clamp(24.0, 64.0)
+          : (screenH * 0.15).clamp(24.0, 64.0),
     );
 
     return Card(
       color: theme.colorScheme.primary,
-      elevation: 25,
+      elevation: cardElevation,
       child: Padding(
         padding: const EdgeInsets.all(40.0),
         child: Text.rich(
           TextSpan(
             children: [
               TextSpan(
-                text: '${pair.first}',
+                text: pair.first,
                 style: style.copyWith(fontWeight: FontWeight.w100),
               ),
               TextSpan(
@@ -380,135 +548,7 @@ class BigCard extends StatelessWidget {
           ),
           semanticsLabel: "${pair.first} ${pair.second}",
         ),
-        // child: Text(
-        //   pair.asLowerCase,
-        //   style: style,
-        //   semanticsLabel: "${pair.first} ${pair.second}",
-        // ),
       ),
     );
   }
 }
-
-// import 'package:flutter/material.dart';
-
-// void main() {
-//   runApp(const MyApp());
-// }
-
-// class MyApp extends StatelessWidget {
-//   const MyApp({super.key});
-
-//   // This widget is the root of your application.
-//   @override
-//   Widget build(BuildContext context) {
-//     return MaterialApp(
-//       title: 'Flutter Demo',
-//       theme: ThemeData(
-//         // This is the theme of your application.
-//         //
-//         // TRY THIS: Try running your application with "flutter run". You'll see
-//         // the application has a purple toolbar. Then, without quitting the app,
-//         // try changing the seedColor in the colorScheme below to Colors.green
-//         // and then invoke "hot reload" (save your changes or press the "hot
-//         // reload" button in a Flutter-supported IDE, or press "r" if you used
-//         // the command line to start the app).
-//         //
-//         // Notice that the counter didn't reset back to zero; the application
-//         // state is not lost during the reload. To reset the state, use hot
-//         // restart instead.
-//         //
-//         // This works for code too, not just values: Most code changes can be
-//         // tested with just a hot reload.
-//         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-//       ),
-//       home: const MyHomePage(title: 'Flutter Demo Home Page'),
-//     );
-//   }
-// }
-
-// class MyHomePage extends StatefulWidget {
-//   const MyHomePage({super.key, required this.title});
-
-//   // This widget is the home page of your application. It is stateful, meaning
-//   // that it has a State object (defined below) that contains fields that affect
-//   // how it looks.
-
-//   // This class is the configuration for the state. It holds the values (in this
-//   // case the title) provided by the parent (in this case the App widget) and
-//   // used by the build method of the State. Fields in a Widget subclass are
-//   // always marked "final".
-
-//   final String title;
-
-//   @override
-//   State<MyHomePage> createState() => _MyHomePageState();
-// }
-
-// class _MyHomePageState extends State<MyHomePage> {
-//   int _counter = 0;
-
-//   void _incrementCounter() {
-//     setState(() {
-//       // This call to setState tells the Flutter framework that something has
-//       // changed in this State, which causes it to rerun the build method below
-//       // so that the display can reflect the updated values. If we changed
-//       // _counter without calling setState(), then the build method would not be
-//       // called again, and so nothing would appear to happen.
-//       _counter++;
-//     });
-//   }
-
-//   @override
-//   Widget build(BuildContext context) {
-//     // This method is rerun every time setState is called, for instance as done
-//     // by the _incrementCounter method above.
-//     //
-//     // The Flutter framework has been optimized to make rerunning build methods
-//     // fast, so that you can just rebuild anything that needs updating rather
-//     // than having to individually change instances of widgets.
-//     return Scaffold(
-//       appBar: AppBar(
-//         // TRY THIS: Try changing the color here to a specific color (to
-//         // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-//         // change color while the other colors stay the same.
-//         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-//         // Here we take the value from the MyHomePage object that was created by
-//         // the App.build method, and use it to set our appbar title.
-//         title: Text(widget.title),
-//       ),
-//       body: Center(
-//         // Center is a layout widget. It takes a single child and positions it
-//         // in the middle of the parent.
-//         child: Column(
-//           // Column is also a layout widget. It takes a list of children and
-//           // arranges them vertically. By default, it sizes itself to fit its
-//           // children horizontally, and tries to be as tall as its parent.
-//           //
-//           // Column has various properties to control how it sizes itself and
-//           // how it positions its children. Here we use mainAxisAlignment to
-//           // center the children vertically; the main axis here is the vertical
-//           // axis because Columns are vertical (the cross axis would be
-//           // horizontal).
-//           //
-//           // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-//           // action in the IDE, or press "p" in the console), to see the
-//           // wireframe for each widget.
-//           mainAxisAlignment: MainAxisAlignment.center,
-//           children: <Widget>[
-//             const Text('You have pushed the button this many times:'),
-//             Text(
-//               '$_counter',
-//               style: Theme.of(context).textTheme.headlineMedium,
-//             ),
-//           ],
-//         ),
-//       ),
-//       floatingActionButton: FloatingActionButton(
-//         onPressed: _incrementCounter,
-//         tooltip: 'Increment',
-//         child: const Icon(Icons.add),
-//       ), // This trailing comma makes auto-formatting nicer for build methods.
-//     );
-//   }
-// }
